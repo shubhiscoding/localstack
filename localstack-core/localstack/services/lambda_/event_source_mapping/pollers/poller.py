@@ -51,6 +51,9 @@ class Poller(ABC):
         processor: EventProcessor | None = None,
     ):
         # TODO: handle pollers without an ARN (e.g., Apache Kafka)
+        self.source_arn = None
+        self.aws_region = None
+        self.source_client = None
         if source_arn:
             self.source_arn = source_arn
             self.aws_region = parse_arn(source_arn)["region"]
@@ -105,7 +108,8 @@ class Poller(ABC):
         https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-pipes-event-filtering.html
         """
         for event in events:
-            event["eventSourceARN"] = self.source_arn
+            if self.source_arn:
+                event["eventSourceARN"] = self.source_arn
             event["eventSource"] = self.event_source()
             event["awsRegion"] = self.aws_region
             event.update(self.extra_metadata())

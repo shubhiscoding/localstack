@@ -77,6 +77,10 @@ class EsmConfigFactory:
             default_source_parameters["StartingPosition"] = EventSourcePosition.TRIM_HORIZON
             default_source_parameters["TumblingWindowInSeconds"] = 0
             default_source_parameters["LastProcessingResult"] = EsmStateReason.NO_RECORDS_PROCESSED
+        elif service == "kafka":
+            default_source_parameters["BatchSize"] = 100
+            default_source_parameters["MaximumBatchingWindowInSeconds"] = 0
+            default_source_parameters["StartingPosition"] = EventSourcePosition.TRIM_HORIZON
         else:
             lambda_hooks.set_event_source_config_defaults.run(
                 default_source_parameters, self.request, service

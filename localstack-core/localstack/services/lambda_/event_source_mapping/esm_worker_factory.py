@@ -12,6 +12,7 @@ from localstack.aws.api.pipes import (
     PipeSourceDynamoDBStreamParameters,
     PipeSourceKinesisStreamParameters,
     PipeSourceParameters,
+    PipeSourceSelfManagedKafkaParameters,
     PipeSourceSqsQueueParameters,
     PipeTargetInvocationType,
     PipeTargetLambdaFunctionParameters,
@@ -37,6 +38,7 @@ from localstack.services.lambda_.event_source_mapping.pollers.sqs_poller import 
     DEFAULT_MAX_WAIT_TIME_SECONDS,
     SqsPoller,
 )
+from localstack.services.lambda_.event_source_mapping.pollers.kafka_poller import KafkaPoller
 from localstack.services.lambda_.event_source_mapping.senders.lambda_sender import LambdaSender
 from localstack.utils.aws.arns import parse_arn
 from localstack.utils.aws.client_types import ServicePrincipal
@@ -131,6 +133,9 @@ class EsmWorkerFactory:
                 ),
             )
 
+        if not source_service and "SelfManagedEventSource" in self.esm_config:
+            source_service = "kafka"
+
         filter_criteria = self.esm_config.get("FilterCriteria", {"Filters": []})
         user_state_reason = EsmStateReason.USER_ACTION
         if source_service == "sqs":
@@ -211,6 +216,34 @@ class EsmWorkerFactory:
                 source_parameters=source_parameters,
                 source_client=source_client,
                 processor=esm_processor,
+            )
+        elif source_service == "kafka":
+            bootstrap_servers = self.esm_config.get("SelfManagedEventSource", {}) \
+                .get("Endpoints", {}).get("KAFKA_BOOTSTRAP_SERVERS", [])
+            topic = self.esm_config.get("Topics", [])
+            batch_size = self.esm_config.get("BatchSize", 100)
+            consumer_group_id = (
+                self.esm_config
+                .get("SelfManagedKafkaEventSourceConfig", {})
+                .get("ConsumerGroupId")
+            ) or self.esm_config.get("UUID", "default")
+            source_parameters = PipeSourceParameters(
+                FilterCriteria=filter_criteria,
+                SelfManagedKafkaParameters=PipeSourceSelfManagedKafkaParameters(
+                    TopicName=topic[0] if topic else "",
+                    BatchSize=batch_size,
+                    MaximumBatchingWindowInSeconds=self.esm_config.get(
+                        "MaximumBatchingWindowInSeconds", 0
+                    ),
+                    StartingPosition=self.esm_config.get("StartingPosition", "TRIM_HORIZON"),
+                    ConsumerGroupID=consumer_group_id,
+                ),
+            )
+            poller = KafkaPoller(
+                bootstrap_servers=bootstrap_servers,
+                source_parameters=source_parameters,
+                processor=esm_processor,
+                aws_region=parse_arn(function_arn)["region"],
             )
         else:
             poller_holder = PollerHolder()

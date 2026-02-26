@@ -97,6 +97,7 @@ runtime = [
     "jsonpath-ng>=1.6.1",
     "jsonpath-rw>=1.4.0",
     # version that has a built wheel
+    "kafka-python-ng>=2.2.0",
     "kclpy-ext>=3.0.0",
     "moto-ext[all]>=5.1.22",
     "opensearch-py>=2.4.1",

@@ -183,7 +183,8 @@ class EsmWorker:
                     e,
                     exc_info=LOG.isEnabledFor(logging.DEBUG),
                 )
-                event_source = parse_arn(self.esm_config.get("EventSourceArn")).get("service")
+                event_source_arn = self.esm_config.get("EventSourceArn")
+                event_source = parse_arn(event_source_arn).get("service") if event_source_arn else "kafka"
                 esm_counter.labels(
                     source=event_source, status=EsmExecutionStatus.source_poller_error
                 ).increment()
